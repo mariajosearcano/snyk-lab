@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Hook pre-commit: bloquea el commit si hay problemas de seguridad.
+# Activar una sola vez con:   git config core.hooksPath .githooks
+set -u
+FALLO=0
+echo "🔒 pre-commit: revisiones de seguridad..."
+
+# 1) Secretos en lo que se va a commitear
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --pre-commit --staged --redact -v 2>/dev/null || gitleaks protect --staged --redact -v || FALLO=1
+else
+  # Respaldo simple si no hay gitleaks: busca patrones típicos en archivos staged
+  if git diff --cached -U0 | grep -E '^\+' | grep -Ei '(secret|password|api[_-]?key|token)\s*[:=]\s*["'"'"'][^"'"'"']{6,}' >/dev/null; then
+    echo "❌ Posible secreto en los cambios. Usa variables de entorno."; FALLO=1
+  fi
+fi
+# Nunca permitir .env
+if git diff --cached --name-only | grep -E '(^|/)\.env$' >/dev/null; then
+  echo "❌ Estás intentando commitear .env"; FALLO=1
+fi
+
+# 2) Linter de seguridad
+if [ -x node_modules/.bin/eslint ]; then
+  npx eslint . || { echo "❌ ESLint encontró problemas"; FALLO=1; }
+fi
+
+# 3) Reglas Semgrep propias
+if command -v semgrep >/dev/null 2>&1; then
+  semgrep --config .semgrep.yml --error --quiet . || { echo "❌ Semgrep encontró problemas"; FALLO=1; }
+fi
+
+# 4) Snyk Code (SAST) - solo bloquea severidad alta
+if command -v snyk >/dev/null 2>&1; then
+  snyk code test --severity-threshold=high >/dev/null || { echo "❌ Snyk Code: hallazgos de severidad alta"; FALLO=1; }
+fi
+
+if [ "$FALLO" -ne 0 ]; then
+  echo "⛔ Commit bloqueado. Corrige lo anterior (o, solo en el laboratorio, usa git commit --no-verify)."
+  exit 1
+fi
+echo "✅ Revisiones superadas."

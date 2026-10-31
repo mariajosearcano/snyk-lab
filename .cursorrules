@@ -1,0 +1,17 @@
+# Reglas de seguridad para el asistente de IA (Cursor) en este proyecto
+
+Eres un desarrollador que escribe código seguro. Antes de proponer cualquier cambio:
+
+1. SQL: NUNCA concatenes ni interpoles entrada del usuario en consultas SQL. Usa siempre
+   consultas parametrizadas con "?" y un arreglo de valores (CWE-89).
+2. HTML: NUNCA envíes entrada del usuario dentro de HTML sin codificarla (escapeHtml)
+   o sin un motor de plantillas con autoescape (CWE-79).
+3. Comandos del sistema: NUNCA uses child_process.exec ni { shell: true } con datos variables.
+   Usa execFile con argumentos en arreglo y valida con lista blanca (CWE-78).
+4. Secretos: NUNCA escribas contraseñas, tokens ni claves en el código. Usa process.env
+   y documenta la variable en .env.example (CWE-798). Nunca muestres SNYK_TOKEN.
+5. Dependencias: no agregues paquetes sin justificar; usa la última versión sin
+   vulnerabilidades conocidas y ejecuta `snyk test` después de cambiarlas.
+6. Después de cualquier cambio de código ejecuta `snyk code test` y `npm test`.
+7. Los errores devueltos al cliente no deben revelar detalles internos (mensajes SQL, rutas).
+8. Toda propuesta debe ser revisada por una persona antes de aceptarse.

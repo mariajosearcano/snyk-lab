@@ -1,0 +1,56 @@
+# Quality Gate de seguridad en CI/CD (GitHub Actions).
+# Se ejecuta en cada push y en cada Pull Request. Si falla, el PR no se puede fusionar
+# (activar "Require status checks to pass" en la protección de la rama main).
+# Requiere el secreto del repositorio SNYK_TOKEN (Settings > Secrets and variables > Actions).
+name: security-quality-gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  secretos:
+    name: Secret scanning (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  pruebas:
+    name: Pruebas funcionales y de seguridad
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  snyk:
+    name: Snyk SCA + SAST
+    runs-on: ubuntu-latest
+    needs: pruebas
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm install -g snyk
+      # SCA: falla si hay dependencias con severidad alta o crítica
+      - run: snyk test --severity-threshold=high
+      # SAST: falla si hay hallazgos de código de severidad alta
+      - run: snyk code test --severity-threshold=high

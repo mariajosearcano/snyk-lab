@@ -1,0 +1,27 @@
+{
+  "name": "snyk-lab-tienda",
+  "version": "1.1.0",
+  "description": "Aplicación de laboratorio - versión corregida (práctica 5, Snyk CLI). Solo para uso local.",
+  "main": "app.js",
+  "private": true,
+  "scripts": {
+    "start": "node app.js",
+    "test": "node --test test/*.test.js",
+    "test:func": "node --test test/funcional.test.js",
+    "test:seg": "node --test test/seguridad.test.js",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "lodash": "^4.17.23",
+    "sqlite3": "5.1.7"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "eslint-plugin-security": "^3.0.1"
+  }
+}

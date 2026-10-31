@@ -1,0 +1,62 @@
+# Reglas Semgrep propias del laboratorio (Shift-Left).
+# Usan "modo taint": siguen el dato desde la entrada del usuario (fuente)
+# hasta la función peligrosa (sumidero).
+# Ejecutar:  semgrep --config .semgrep.yml --error .
+rules:
+  - id: sqli-entrada-usuario
+    mode: taint
+    message: >
+      Entrada del usuario llega a una consulta SQL (CWE-89, OWASP A05:2025).
+      Usa consultas parametrizadas: db.get("... WHERE x = ?", [valor], cb)
+    severity: ERROR
+    languages: [javascript]
+    pattern-sources:
+      - pattern-either:
+          - pattern: $REQ.query
+          - pattern: $REQ.body
+          - pattern: $REQ.params
+    pattern-sinks:
+      - patterns:
+          - pattern: $DB.$M($SQL, ...)
+          - focus-metavariable: $SQL
+          - metavariable-regex:
+              metavariable: $M
+              regex: ^(get|all|run|each|exec|prepare|query)$
+
+  - id: xss-entrada-usuario
+    mode: taint
+    message: >
+      Entrada del usuario se envía como HTML sin codificar (CWE-79).
+      Codifica la salida con escapeHtml o usa plantillas con autoescape.
+    severity: ERROR
+    languages: [javascript]
+    pattern-sources:
+      - pattern: $REQ.query
+    pattern-sanitizers:
+      - pattern: escapeHtml(...)
+    pattern-sinks:
+      - pattern: $RES.send(...)
+
+  - id: command-injection-exec
+    mode: taint
+    message: >
+      Entrada del usuario llega a exec(), que usa una shell (CWE-78).
+      Usa execFile("binario", [args]) y valida con lista blanca.
+    severity: ERROR
+    languages: [javascript]
+    pattern-sources:
+      - pattern: $REQ.query
+    pattern-sinks:
+      - patterns:
+          - pattern: exec($CMD, ...)
+          - focus-metavariable: $CMD
+
+  - id: secreto-quemado
+    message: Posible secreto escrito en el código (CWE-798). Léelo de una variable de entorno.
+    severity: WARNING
+    languages: [javascript]
+    patterns:
+      - pattern: const $NAME = "...";
+      - metavariable-regex:
+          metavariable: $NAME
+          regex: (?i).*(secret|password|passwd|token|api_?key).*

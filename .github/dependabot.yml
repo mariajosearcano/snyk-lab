@@ -1,0 +1,9 @@
+# Política de actualización de dependencias: revisión semanal automática.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels: ["dependencias", "seguridad"]
